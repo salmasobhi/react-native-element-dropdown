@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-shadow */
-import _assign from 'lodash/assign';
 import _differenceWith from 'lodash/differenceWith';
 import _findIndex from 'lodash/findIndex';
 import _get from 'lodash/get';
@@ -80,7 +79,7 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
       renderInputSearch,
       onFocus,
       onBlur,
-      autoScroll = true,
+      autoScroll = false,
       showsVerticalScrollIndicator = true,
       dropdownPosition = 'auto',
       flatListProps,
@@ -148,7 +147,9 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
     useEffect(() => {
       if (data && searchText.length === 0) {
         const filterData = excludeData(data);
-        setListData([...filterData]);
+        setListData((prev) =>
+          _isEqual(prev, filterData) ? prev : [...filterData]
+        );
       }
 
       if (searchText) {
@@ -205,13 +206,28 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
           const bottom = H - top + height;
           const left = I18nManager.isRTL ? W - width - pageX : pageX;
 
-          setPosition({
+          const newPosition = {
             isFull,
-            width: Math.floor(width),
-            top: Math.floor(top + statusBarHeight),
-            bottom: Math.floor(bottom - statusBarHeight),
-            left: Math.floor(left),
-            height: Math.floor(height),
+            width: Math.floor(width || 0),
+            top: Math.floor((top || 0) + statusBarHeight),
+            bottom: Math.floor((bottom || 0) - statusBarHeight),
+            left: Math.floor(left || 0),
+            height: Math.floor(height || 0),
+          };
+
+          setPosition((prev: any) => {
+            if (
+              prev &&
+              prev.isFull === newPosition.isFull &&
+              prev.width === newPosition.width &&
+              prev.top === newPosition.top &&
+              prev.bottom === newPosition.bottom &&
+              prev.left === newPosition.left &&
+              prev.height === newPosition.height
+            ) {
+              return prev;
+            }
+            return newPosition;
           });
         });
       }
@@ -260,9 +276,12 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
       );
 
       if (getItem.length > 0) {
-        setCurrentValue(getItem[0]);
+        const newItem = getItem[0];
+        setCurrentValue((prev: any) =>
+          _isEqual(prev, newItem) ? prev : newItem
+        );
       } else {
-        setCurrentValue(null);
+        setCurrentValue((prev: any) => (prev === null ? prev : null));
       }
     }, [data, value, valueField]);
 
@@ -484,7 +503,6 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
       ({ item, index }: { item: any; index: number }) => {
         const isSelected = currentValue && _get(currentValue, valueField);
         const selected = _isEqual(_get(item, valueField), isSelected);
-        _assign(item, { _index: index });
         return (
           <TouchableHighlight
             key={index.toString()}
@@ -604,7 +622,6 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
               keyboardShouldPersistTaps="handled"
               ref={refList}
               onContentSizeChange={scrollIndex}
-              onScrollToIndexFailed={scrollIndex}
               data={listData}
               inverted={isTopPosition ? inverted : false}
               renderItem={_renderItem}
@@ -740,14 +757,16 @@ const DropdownComponent = React.forwardRef<IDropdownRef, DropdownProps<any>>(
     ]);
 
     return (
-      <View
-        style={StyleSheet.flatten([styles.mainWrap, style])}
-        ref={ref}
-        onLayout={_measure}
-      >
-        {_renderDropdown()}
+      <>
+        <View
+          style={StyleSheet.flatten([styles.mainWrap, style])}
+          ref={ref}
+          onLayout={!visible ? _measure : undefined}
+        >
+          {_renderDropdown()}
+        </View>
         {_renderModal()}
-      </View>
+      </>
     );
   }
 );

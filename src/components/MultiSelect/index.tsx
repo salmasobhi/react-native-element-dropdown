@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
-import _assign from 'lodash/assign';
 import _differenceWith from 'lodash/differenceWith';
 import _get from 'lodash/get';
+import _isEqual from 'lodash/isEqual';
 import React, {
   useCallback,
   useEffect,
@@ -193,7 +193,10 @@ const MultiSelectComponent = React.forwardRef<
   }, [fontFamily]);
 
   const getValue = useCallback(() => {
-    setCurrentValue(value ? [...value] : []);
+    const nextValue = value ? [...value] : [];
+    setCurrentValue((prev: any) =>
+      _isEqual(prev, nextValue) ? prev : nextValue
+    );
   }, [value]);
 
   const _measure = useCallback(() => {
@@ -211,13 +214,28 @@ const MultiSelectComponent = React.forwardRef<
         const bottom = H - top + height;
         const left = I18nManager.isRTL ? W - width - pageX : pageX;
 
-        setPosition({
+        const newPosition = {
           isFull,
-          width: Math.floor(width),
-          top: Math.floor(top + statusBarHeight),
-          bottom: Math.floor(bottom - statusBarHeight),
-          left: Math.floor(left),
-          height: Math.floor(height),
+          width: Math.floor(width || 0),
+          top: Math.floor((top || 0) + statusBarHeight),
+          bottom: Math.floor((bottom || 0) - statusBarHeight),
+          left: Math.floor(left || 0),
+          height: Math.floor(height || 0),
+        };
+
+        setPosition((prev: any) => {
+          if (
+            prev &&
+            prev.isFull === newPosition.isFull &&
+            prev.width === newPosition.width &&
+            prev.top === newPosition.top &&
+            prev.bottom === newPosition.bottom &&
+            prev.left === newPosition.left &&
+            prev.height === newPosition.height
+          ) {
+            return prev;
+          }
+          return newPosition;
         });
       });
     }
@@ -457,7 +475,6 @@ const MultiSelectComponent = React.forwardRef<
   const _renderItem = useCallback(
     ({ item, index }: { item: any; index: number }) => {
       const selected = checkSelected(item);
-      _assign(item, { _index: index });
       return (
         <TouchableHighlight
           key={index.toString()}
@@ -791,14 +808,16 @@ const MultiSelectComponent = React.forwardRef<
 
   const _renderInside = () => {
     return (
-      <View
-        style={StyleSheet.flatten([styles.mainWrap, style])}
-        ref={ref}
-        onLayout={_measure}
-      >
-        {_renderDropdownInside()}
+      <>
+        <View
+          style={StyleSheet.flatten([styles.mainWrap, style])}
+          ref={ref}
+          onLayout={!visible ? _measure : undefined}
+        >
+          {_renderDropdownInside()}
+        </View>
         {_renderModal()}
-      </View>
+      </>
     );
   };
 
@@ -851,11 +870,11 @@ const MultiSelectComponent = React.forwardRef<
       <View
         style={StyleSheet.flatten([styles.mainWrap, style])}
         ref={ref}
-        onLayout={_measure}
+        onLayout={!visible ? _measure : undefined}
       >
         {_renderDropdown()}
-        {_renderModal()}
       </View>
+      {_renderModal()}
       {(!visible || alwaysRenderSelectedItem) &&
         visibleSelectedItem &&
         _renderItemSelected(false)}
